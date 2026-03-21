@@ -4,19 +4,26 @@ import { ProposalEditorWrapper } from './proposal-editor-wrapper'
 
 interface ProposalPageProps {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ generate?: string; tone?: string }>
+  searchParams: Promise<{ generate?: string; tone?: string; templateId?: string }>
 }
 
 export default async function ProposalPage({ params, searchParams }: ProposalPageProps) {
   const { id } = await params
-  const { generate, tone } = await searchParams
+  const { generate, tone, templateId } = await searchParams
 
   const supabase = await createClient()
-  const { data: proposal, error } = await supabase
-    .from('proposals')
-    .select('*')
-    .eq('id', id)
-    .single()
+  const [{ data: proposal, error }, { data: templates }] = await Promise.all([
+    supabase
+      .from('proposals')
+      .select('*')
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('proposal_templates')
+      .select('*')
+      .order('is_system', { ascending: false })
+      .order('name', { ascending: true }),
+  ])
 
   if (error || !proposal) notFound()
 
@@ -40,6 +47,8 @@ export default async function ProposalPage({ params, searchParams }: ProposalPag
         shouldGenerate={generate === 'true'}
         tone={tone ?? 'formal'}
         proposal={proposal}
+        templates={templates ?? []}
+        selectedTemplateIdFromQuery={templateId}
       />
     </div>
   )

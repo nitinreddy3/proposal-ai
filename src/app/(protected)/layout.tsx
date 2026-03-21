@@ -14,11 +14,17 @@ export default async function ProtectedLayout({
   if (!user) redirect('/login')
 
   return (
-    <div className="flex h-screen flex-col">
-      <AppHeader />
+    <div className="flex h-screen flex-col bg-slate-50">
+      <AppHeader
+        email={user.email ?? ''}
+        fullName={user.user_metadata?.full_name}
+      />
       <div className="flex flex-1 overflow-hidden">
-        <AppSidebar />
-        <main className="flex-1 overflow-y-auto p-6">
+        <AppSidebar
+          email={user.email ?? ''}
+          fullName={user.user_metadata?.full_name}
+        />
+        <main className="flex-1 overflow-y-auto bg-[#f7fafc] p-4 lg:p-6">
           {children}
         </main>
       </div>

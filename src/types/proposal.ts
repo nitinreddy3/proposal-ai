@@ -10,6 +10,9 @@ export const proposalInputSchema = z.object({
   budget: z.string().optional().default(''),
   timeline: z.string().optional().default(''),
   tone: proposalToneSchema.default('formal'),
+  opportunityId: z.string().uuid().optional(),
+  templateId: z.string().uuid().optional(),
+  attachmentIds: z.array(z.string().uuid()).default([]),
 })
 
 export type ProposalInput = z.infer<typeof proposalInputSchema>
@@ -31,6 +34,9 @@ export interface Proposal {
   budget: string | null
   timeline: string | null
   generated_content: string | null
+  opportunity_id: string | null
+  template_id: string | null
+  generation_context: Record<string, unknown> | null
   status: 'draft' | 'generating' | 'completed'
   created_at: string
   updated_at: string

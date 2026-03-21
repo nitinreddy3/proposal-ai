@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 import { TONE_OPTIONS } from '@/types/proposal'
 import type { ProposalTone } from '@/types/proposal'
+import type { ProposalTemplate } from '@/types/proposal-template'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -30,6 +31,7 @@ const formSchema = z.object({
   budget: z.string(),
   timeline: z.string(),
   tone: z.enum(['formal', 'persuasive', 'technical']),
+  templateId: z.string().uuid().optional(),
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -38,6 +40,7 @@ type FormData = z.infer<typeof formSchema>
 export function ProposalForm() {
   const router = useRouter()
   const [isGenerating, setIsGenerating] = useState(false)
+  const [templates, setTemplates] = useState<ProposalTemplate[]>([])
 
   const {
     register,
@@ -54,8 +57,24 @@ export function ProposalForm() {
       budget: '',
       timeline: '',
       tone: 'formal',
+      templateId: undefined,
     },
   })
+
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        const response = await fetch('/api/proposal-templates')
+        if (!response.ok) return
+        const payload = (await response.json()) as ProposalTemplate[]
+        setTemplates(payload)
+      } catch {
+        setTemplates([])
+      }
+    }
+
+    loadTemplates()
+  }, [])
 
   const handleFormSubmit = async (data: FormData) => {
     setIsGenerating(true)
@@ -71,6 +90,7 @@ export function ProposalForm() {
           budget: data.budget,
           timeline: data.timeline,
           status: 'generating',
+          template_id: data.templateId ?? null,
         }),
       })
 
@@ -81,6 +101,10 @@ export function ProposalForm() {
         generate: 'true',
         tone: data.tone,
       })
+
+      if (data.templateId) {
+        params.set('templateId', data.templateId)
+      }
 
       router.push(`/proposals/${proposal.id}?${params.toString()}`)
     } catch {
@@ -161,22 +185,25 @@ export function ProposalForm() {
             )}
           </div>
 
-          <div className="grid sm:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="budget">Budget</Label>
-              <Input
-                id="budget"
-                placeholder="e.g., $50,000"
-                {...register('budget')}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="timeline">Timeline</Label>
-              <Input
-                id="timeline"
-                placeholder="e.g., 3 months"
-                {...register('timeline')}
-              />
+              <Label htmlFor="templateId">Template</Label>
+              <Select
+                onValueChange={(val) =>
+                  setValue('templateId', (val ?? undefined) as string | undefined)
+                }
+              >
+                <SelectTrigger id="templateId">
+                  <SelectValue placeholder="Select template (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="tone">Tone</Label>
@@ -197,6 +224,25 @@ export function ProposalForm() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="budget">Budget</Label>
+              <Input
+                id="budget"
+                placeholder="e.g., $50,000"
+                {...register('budget')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="timeline">Timeline</Label>
+              <Input
+                id="timeline"
+                placeholder="e.g., 3 months"
+                {...register('timeline')}
+              />
             </div>
           </div>
 

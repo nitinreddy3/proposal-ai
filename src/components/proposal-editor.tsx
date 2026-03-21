@@ -1,11 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import TextAlign from '@tiptap/extension-text-align'
 import Placeholder from '@tiptap/extension-placeholder'
+import Image from '@tiptap/extension-image'
 import { toast } from 'sonner'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
@@ -23,6 +25,8 @@ import {
   Redo2,
   Loader2,
   Save,
+  ImagePlus,
+  ChartNoAxesCombined,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -62,6 +66,10 @@ export function ProposalEditor({
       }),
       Underline,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Image.configure({
+        allowBase64: false,
+        inline: false,
+      }),
       Placeholder.configure({
         placeholder: 'Your proposal content will appear here...',
       }),
@@ -106,6 +114,27 @@ export function ProposalEditor({
     if (!editor) return
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
     handleSave(editor.getHTML())
+  }
+
+  const handleInsertImage = () => {
+    if (!editor) return
+    const imageUrl = window.prompt('Enter image URL')
+    if (!imageUrl) return
+    editor.chain().focus().setImage({ src: imageUrl }).run()
+  }
+
+  const handleInsertCallout = () => {
+    if (!editor) return
+    editor
+      .chain()
+      .focus()
+      .insertContent(
+        `<div class="rounded-lg border p-4 bg-slate-50">
+          <h3>Performance Highlight</h3>
+          <p>Add a measurable outcome, KPI, or differentiator in this callout.</p>
+        </div>`,
+      )
+      .run()
   }
 
   useEffect(() => {
@@ -278,6 +307,20 @@ export function ProposalEditor({
           >
             <Redo2 className="h-4 w-4" />
           </ToolbarButton>
+          <ToolbarButton
+            label="Insert Image"
+            isActive={false}
+            onClick={handleInsertImage}
+          >
+            <ImagePlus className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Insert Graphic Callout"
+            isActive={false}
+            onClick={handleInsertCallout}
+          >
+            <ChartNoAxesCombined className="h-4 w-4" />
+          </ToolbarButton>
         </div>
 
         <div className="ml-auto flex items-center gap-2">
@@ -319,7 +362,7 @@ function ToolbarButton({
   isActive,
   onClick,
 }: {
-  children: React.ReactNode
+  children: ReactNode
   label: string
   isActive: boolean
   onClick: () => void

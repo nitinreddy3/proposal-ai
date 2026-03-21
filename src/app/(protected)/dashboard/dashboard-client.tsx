@@ -1,27 +1,19 @@
 'use client'
 
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import type { Proposal } from '@/types/proposal'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -32,43 +24,32 @@ import {
 } from '@/components/ui/dialog'
 import {
   Plus,
-  Search,
   FileText,
-  Pencil,
+  BriefcaseBusiness,
+  CircleCheck,
+  Clock3,
+  ArrowUpRight,
   Copy,
   Trash2,
   Loader2,
+  UserCircle2,
 } from 'lucide-react'
 
 interface DashboardClientProps {
   initialProposals: Proposal[]
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  draft: 'bg-yellow-100 text-yellow-800',
-  generating: 'bg-blue-100 text-blue-800',
-  completed: 'bg-green-100 text-green-800',
-}
-
 /** Client-side dashboard with search, filter, and proposal management. */
 export function DashboardClient({ initialProposals }: DashboardClientProps) {
   const router = useRouter()
   const [proposals, setProposals] = useState(initialProposals)
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
   const [deleteTarget, setDeleteTarget] = useState<Proposal | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-
-  const filteredProposals = proposals.filter((p) => {
-    const matchesSearch =
-      !search ||
-      p.title.toLowerCase().includes(search.toLowerCase()) ||
-      p.client_name?.toLowerCase().includes(search.toLowerCase())
-
-    const matchesStatus = statusFilter === 'all' || p.status === statusFilter
-
-    return matchesSearch && matchesStatus
-  })
+  const completedCount = proposals.filter((proposal) => proposal.status === 'completed').length
+  const inProgressCount = proposals.filter((proposal) =>
+    proposal.status === 'generating' || proposal.status === 'draft'
+  ).length
+  const recentProposals = [...proposals].slice(0, 5)
 
   const handleDelete = async () => {
     if (!deleteTarget) return
@@ -126,124 +107,153 @@ export function DashboardClient({ initialProposals }: DashboardClientProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div>
         <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Manage your proposals</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-[#0d2b4f] md:text-[42px]">
+            Welcome Back, System
+          </h1>
+          <p className="text-base text-slate-500">
+            Manage your government proposals and track opportunities
+          </p>
         </div>
-        <Button render={<Link href="/proposals/new" />} className="gap-2">
-          <Plus className="h-4 w-4" />
-          New Proposal
-        </Button>
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search proposals..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+      <div className="grid gap-4 xl:grid-cols-3">
+        <StatsCard
+          title="Total Proposals"
+          value={proposals.length}
+          subtitle={`${completedCount} completed`}
+          icon={<FileText className="h-4 w-4 text-blue-700" />}
+          iconClassName="bg-blue-100"
+        />
+        <StatsCard
+          title="In Progress"
+          value={inProgressCount}
+          subtitle={inProgressCount === 0 ? 'All clear' : 'Active drafting'}
+          icon={<Clock3 className="h-4 w-4 text-orange-700" />}
+          iconClassName="bg-orange-100"
+        />
+        <StatsCard
+          title="Completed"
+          value={completedCount}
+          subtitle={completedCount > 0 ? 'Great progress' : 'Get started'}
+          icon={<CircleCheck className="h-4 w-4 text-emerald-700" />}
+          iconClassName="bg-emerald-100"
+        />
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-2xl font-extrabold text-[#0d2b4f]">Quick Actions</h2>
+        <div className="grid gap-3 lg:grid-cols-3">
+          <QuickActionCard
+            title="New Proposal"
+            description="Generate an AI-powered proposal"
+            href="/proposals/new"
+            icon={<Plus className="h-5 w-5" />}
+            className="bg-gradient-to-br from-emerald-500 to-emerald-600"
+            showPlus
+          />
+          <QuickActionCard
+            title="Search Opportunities"
+            description="Find government contract opportunities"
+            href="/opportunities"
+            icon={<BriefcaseBusiness className="h-5 w-5" />}
+            className="bg-gradient-to-br from-blue-500 to-blue-600"
+          />
+          <QuickActionCard
+            title="Manage Profile"
+            description="Update your vendor information"
+            href="/vendor-profile"
+            icon={<UserCircle2 className="h-5 w-5" />}
+            className="bg-gradient-to-br from-[#163765] to-[#0f2f57]"
           />
         </div>
-        <Select
-          value={statusFilter}
-          onValueChange={(val) => setStatusFilter(val ?? 'all')}
-        >
-          <SelectTrigger className="w-36">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="generating">Generating</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
-      {filteredProposals.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-medium mb-1">No proposals found</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              {proposals.length === 0
-                ? 'Create your first AI-powered proposal to get started.'
-                : 'No proposals match your search criteria.'}
-            </p>
-            {proposals.length === 0 && (
-              <Button render={<Link href="/proposals/new" />} className="gap-2">
-                <Plus className="h-4 w-4" />
+      <Card id="recent-proposals" className="overflow-hidden rounded-2xl border-slate-200">
+        <CardHeader className="flex flex-row items-center justify-between border-b bg-white py-4">
+          <CardTitle className="flex items-center gap-2 text-xl font-bold text-[#0d2b4f]">
+            <FileText className="h-5 w-5" />
+            Recent Proposals
+          </CardTitle>
+          <Link
+            href="/dashboard"
+            className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+          >
+            View all
+          </Link>
+        </CardHeader>
+        <CardContent className="space-y-3 bg-white p-4">
+          {recentProposals.length === 0 ? (
+            <div className="rounded-xl border border-dashed p-8 text-center">
+              <p className="font-medium text-slate-700">No proposals yet</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Create your first AI-powered proposal to get started.
+              </p>
+              <Button
+                className="mt-4"
+                render={<Link href="/proposals/new" />}
+              >
                 Create Proposal
               </Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredProposals.map((proposal) => (
-            <Card
-              key={proposal.id}
-              className="group hover:shadow-md transition-shadow"
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-base line-clamp-1">
+            </div>
+          ) : (
+            recentProposals.map((proposal) => (
+              <div
+                key={proposal.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-900">
                     {proposal.title}
-                  </CardTitle>
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {proposal.client_name ?? 'No client'} • Updated {formatDate(proposal.updated_at)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
                   <Badge
                     variant="secondary"
-                    className={STATUS_COLORS[proposal.status] ?? ''}
+                    className={
+                      proposal.status === 'completed'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : proposal.status === 'generating'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-amber-100 text-amber-800'
+                    }
                   >
                     {proposal.status}
                   </Badge>
-                </div>
-                {proposal.client_name && (
-                  <CardDescription className="line-clamp-1">
-                    {proposal.client_name}
-                  </CardDescription>
-                )}
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-muted-foreground mb-4">
-                  Updated {formatDate(proposal.updated_at)}
-                </p>
-                <div className="flex items-center gap-1">
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    className="gap-1.5"
                     onClick={() => router.push(`/proposals/${proposal.id}`)}
                   >
-                    <Pencil className="h-3.5 w-3.5" />
-                    Edit
+                    Open
                   </Button>
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="gap-1.5"
+                    size="icon"
                     onClick={() => handleDuplicate(proposal)}
+                    title="Duplicate proposal"
                   >
-                    <Copy className="h-3.5 w-3.5" />
-                    Duplicate
+                    <Copy className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="gap-1.5 text-destructive hover:text-destructive"
+                    size="icon"
+                    className="text-destructive"
                     onClick={() => setDeleteTarget(proposal)}
+                    title="Delete proposal"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Delete
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
 
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <DialogContent>
@@ -264,7 +274,7 @@ export function DashboardClient({ initialProposals }: DashboardClientProps) {
               disabled={isDeleting}
             >
               {isDeleting ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
               Delete
             </Button>
@@ -272,5 +282,70 @@ export function DashboardClient({ initialProposals }: DashboardClientProps) {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+function StatsCard({
+  title,
+  value,
+  subtitle,
+  icon,
+  iconClassName,
+}: {
+  title: string
+  value: number
+  subtitle: string
+  icon: ReactNode
+  iconClassName: string
+}) {
+  return (
+    <Card className="rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+      <CardHeader className="flex flex-row items-center justify-between pb-1">
+        <p className="text-sm font-medium text-slate-500">{title}</p>
+        <span className={`rounded-lg p-2.5 ${iconClassName}`}>{icon}</span>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <p className="text-[40px] font-extrabold leading-none text-[#0d2b4f]">{value}</p>
+        <p className="mt-3 text-sm text-slate-500">{subtitle}</p>
+      </CardContent>
+    </Card>
+  )
+}
+
+function QuickActionCard({
+  title,
+  description,
+  href,
+  className,
+  icon,
+  showPlus = false,
+}: {
+  title: string
+  description: string
+  href: string
+  className: string
+  icon: ReactNode
+  showPlus?: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      className={`group block min-h-[158px] rounded-2xl p-5 text-white shadow-sm transition-transform hover:-translate-y-0.5 ${className}`}
+    >
+      <div className="mb-6 inline-flex rounded-md bg-white/15 p-2">
+        {icon}
+      </div>
+      {showPlus ? (
+        <p className="text-[30px] font-light leading-none">+</p>
+      ) : null}
+      <p className={`${showPlus ? 'mt-2' : 'mt-0'} text-2xl font-extrabold leading-tight`}>
+        {title}
+      </p>
+      <p className="mt-1 text-sm text-white/85">{description}</p>
+      <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-white/90">
+        Open
+        <ArrowUpRight className="h-3.5 w-3.5" />
+      </span>
+    </Link>
   )
 }
